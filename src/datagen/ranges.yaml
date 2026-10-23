@@ -1,0 +1,91 @@
+# Parameter ranges per profile.
+#
+# Entry forms:
+#   name: 5                                  fixed value
+#   name: {min: a, max: b}                   uniform float in [a, b]
+#   name: {min: a, max: b, type: int}        uniform integer in [a, b]
+#   name: {choice: [a, b, ...]}              one of the listed values
+#   per: camera | pair | corner | pass       one value per camera / neighbour pair / field corner / pass
+#
+# Levels:
+#   dataset  drawn ONCE per dataset (draw_dataset_params), constant for all images
+#   image    drawn per image during generation
+#   object   drawn per plant / detection during generation
+#
+# Dataset entries are drawn in file order; "per" counts must be drawn before use.
+# A profile with "base" inherits everything from it and overrides per entry.
+
+profiles:
+  standard:
+    dataset:
+      cameras: 5
+      # camera model, shared by the rig (W x H landscape, long side across the driving direction)
+      resolution_px: {choice: ["4000x3000", "4056x3040", "5328x3040", "5472x3648", "6000x4000", "8192x5460"]}
+      hfov_deg: {min: 50, max: 90}                  # fx = (W/2) / tan(hfov/2)
+      fy_ratio: {min: 0.995, max: 1.005}            # fy = fx * ratio
+      cx_offset_frac: {min: -0.01, max: 0.01}       # cx = W/2 + offset * W
+      cy_offset_frac: {min: -0.01, max: 0.01}       # cy = H/2 + offset * H
+      k1: {min: -0.15, max: 0.05}                   # OpenCV distortion; redrawn if a rig camera's lens
+      k2: {min: -0.05, max: 0.05}                   # would fold inside its image
+      k3: {min: -0.01, max: 0.01}
+      p1: {min: -0.001, max: 0.001}
+      p2: {min: -0.001, max: 0.001}
+      # individual deviations of each camera in the rig
+      cam_fx_dev_frac: {min: -0.01, max: 0.01, per: camera}            # fx and fy * (1 + dev)
+      cam_cx_dev_frac: {min: -0.005, max: 0.005, per: camera}          # cx + dev * W
+      cam_cy_dev_frac: {min: -0.005, max: 0.005, per: camera}          # cy + dev * H
+      cam_distortion_dev_frac: {min: -0.10, max: 0.10, per: camera}    # all coefficients * (1 + dev)
+      gsd_mm_per_px: {min: 1.2, max: 2.0}      # alt_agl = GSD * mean fx of the rig
+      cross_overlap_frac: {min: 0.05, max: 0.09, per: pair}       # of image width
+      along_offset_frac: {min: -0.06, max: 0.06, per: camera}     # of image length on ground
+      pitch_deg: {min: -93, max: -87, per: camera}
+      roll_deg: {min: -3, max: 3, per: camera}
+      yaw_dev_deg: {min: -2, max: 2, per: camera}
+      frame_interval_s: {min: 0.80, max: 1.00}
+      frames: {min: 50, max: 250, type: int}
+      passes: {min: 1, max: 3, type: int}
+      along_overlap_frac: {min: 0.10, max: 0.25}                  # normal driving
+      standstill_share: {min: 0.0, max: 0.15}                     # of frames
+      standstill_overlap_frac: {min: 0.90, max: 0.99}
+      center_lat_deg: {min: 47, max: 54}
+      center_lon_deg: {min: 6, max: 14}
+      heading_deg: {min: 0, max: 360}
+      corner_jitter_along_frac: {min: -0.05, max: 0.05, per: corner}
+      corner_jitter_across_frac: {min: 0.0, max: 0.05, per: corner}     # inward only: outer cameras overhang the field
+      field_width_factor: {min: 0.85, max: 1.0}                   # width = passes * rig width * factor
+      headland_start_m: {min: 0, max: 8, per: pass}               # pass starts outside the field
+      headland_end_m: {min: 0, max: 8, per: pass}                 # pass ends outside the field
+      row_spacing_m: {min: 0.35, max: 0.50}                       # rows parallel to heading
+      plant_density_per_m2: {min: 8, max: 40}                     # only inside field
+      center_noise_sigma_px: {min: 0, max: 3}
+      pose_noise_pos_sigma_m: 0
+      pose_noise_alt_sigma_m: 0
+      pose_noise_angle_sigma_deg: 0
+    image:
+      recall: {min: 0.80, max: 0.98}
+      false_positive_frac: {min: 0.0, max: 0.05}
+    object:
+      plant_diameter_m: {min: 0.08, max: 0.25}
+      box_aspect: {min: 0.6, max: 1.6}
+      box_size_m: {min: 0.04, max: 0.30}       # clip, ground equivalent (px = m / GSD of the camera)
+      conf_true: {min: 0.05, max: 0.95, a: 5, b: 2}   # min + (max-min)·Beta(a, b), skewed high
+      conf_false: {min: 0.05, max: 0.60}
+
+  small:
+    base: standard
+    dataset:
+      frames: {min: 3, max: 10, type: int}
+      passes: 1
+      standstill_share: 0.0
+      k1: 0.0
+      k2: 0.0
+      k3: 0.0
+      p1: 0.0
+      p2: 0.0
+
+  noisy:
+    base: standard
+    dataset:
+      pose_noise_pos_sigma_m: {min: 0, max: 0.05}
+      pose_noise_alt_sigma_m: {min: 0, max: 0.05}
+      pose_noise_angle_sigma_deg: {min: 0, max: 0.5}

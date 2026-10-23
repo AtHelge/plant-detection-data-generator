@@ -1,0 +1,39 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python build artefacts
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+
+# Test / tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/.tmp*/
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Generated data (reproducible from the seed, not committed)
+output/
+examples/
+_ref/
+_check/
+
+# Local settings and secrets
+.claude/
+.env
+
+# Not committed
+README.md
+tests/
